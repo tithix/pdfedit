@@ -1,109 +1,144 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
   <meta charset="UTF-8">
-  <title>Éditeur PDF:nanou</title>
-  <link rel="icon" type="image/png"
-    href="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=source"
-    onerror="console.error('Erreur de chargement du favicon:', this.href)">
+  <title>Éditeur PDF: nanou</title>
+  <link rel="icon" type="image/png" href="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=source" onerror="console.error('Erreur de chargement du favicon:', this.href)">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .cursor-text {
-      cursor: text;
+    body {
+      font-family: 'Inter', sans-serif;
     }
-
-    .highlight {
-      background-color: yellow;
-    }
-
+    .cursor-text { cursor: text; }
+    .highlight { background-color: yellow; }
     canvas {
-      border: 1px solid black;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-
-    #canvas-container {
-      position: relative;
-    }
-
+    #canvas-container { position: relative; }
     #tempInput {
       position: absolute;
-      border: 1px solid #ccc;
+      border: 1px solid #e5e7eb;
       background: white;
-      font-family: Arial;
+      font-family: 'Inter', sans-serif;
       font-size: 18px;
       outline: none;
-      padding: 2px;
+      padding: 4px;
       z-index: 1000;
     }
-
     .interactive-button {
-      transition: transform 0.2s, background-color 0.2s;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-
     .interactive-button:hover {
-      transform: scale(1.05);
-      background-color: #3b82f6;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
-
     .interactive-button:active {
-      transform: scale(0.95);
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
-
     .header-icon {
       width: 40px;
       height: 40px;
-      margin-right: 8px;
+      margin-right: 12px;
+    }
+    #instructions-modal {
+      z-index: 2000;
+    }
+    .modal-content {
+      max-width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .close-button {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.3s ease;
+    }
+    .close-button:hover {
+      background-color: #f3f4f6;
     }
   </style>
 </head>
-
-<body class="bg-gray-100">
-  <div class="p-4 max-w-4xl mx-auto">
-    <div class="flex items-center justify-center mb-4 space-x-2">
-      <img
-        src="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=sourc"
-        alt="Icône Éditeur PDF" class="header-icon"
-        onerror="console.error('Erreur de chargement de l\'icône:', this.src)">
-      <h1 class="text-3xl font-bold text-center">Éditeur PDF</h1>
+<body class="bg-gray-50">
+  <div class="p-6 max-w-5xl mx-auto">
+    <div class="flex items-center justify-center mb-6 space-x-3">
+      <img src="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=sourc" alt="Icône Éditeur PDF" class="header-icon" onerror="console.error('Erreur de chargement de l\'icône:', this.src)">
+      <h1 class="text-3xl font-semibold text-gray-800">Éditeur PDF</h1>
       <span class="text-sm text-gray-500">Powered by NaNou</span>
     </div>
-    <div class="flex flex-col space-y-4 mb-4">
-      <input type="file" id="pdfInput" accept="application/pdf" class="border p-3 text-lg rounded-lg w-full">
-      <div class="flex flex-col space-y-4">
-        <div class="flex flex-wrap gap-4 justify-center">
-          <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
-            <h2 class="text-lg font-semibold mb-2">Tailles</h2>
-            <div class="flex gap-1">
-              <button onclick="changeSize(20)"
-                class="interactive-button bg-blue-500 text-white px-3 py-1.5 text-sm rounded-lg">Taille 20</button>
-              <button onclick="changeSize(30)"
-                class="interactive-button bg-blue-500 text-white px-3 py-1.5 text-sm rounded-lg">Taille 30</button>
+    <div class="flex flex-col space-y-6">
+      <input type="file" id="pdfInput" accept="application/pdf" class="border-none p-4 text-base rounded-xl w-full bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      <div class="flex flex-col space-y-6">
+        <div class="flex flex-wrap gap-6 justify-center">
+          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Tailles</h2>
+            <div class="flex gap-2">
+              <button onclick="changeSize(14)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">14</button>
+              <button onclick="changeSize(16)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">16</button>
+              <button onclick="changeSize(18)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">18</button>
+              <button onclick="changeSize(20)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">20</button>
             </div>
           </div>
-          <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
-            <h2 class="text-lg font-semibold mb-2">Couleurs</h2>
-            <div class="flex gap-1">
-              <button onclick="changeColor('#000000')"
-                class="interactive-button bg-black text-white px-3 py-1.5 text-sm rounded-lg">Noir</button>
-              <button onclick="changeColor('#FF0000')"
-                class="interactive-button bg-red-500 text-white px-3 py-1.5 text-sm rounded-lg">Rouge</button>
-              <button onclick="changeColor('#0000FF')"
-                class="interactive-button bg-blue-700 text-white px-3 py-1.5 text-sm rounded-lg">Bleu</button>
+          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Couleurs</h2>
+            <div class="flex gap-2">
+              <button onclick="changeColor('#000000')" class="interactive-button bg-gray-800 text-white px-4 py-2 text-base rounded-xl">Noir</button>
+              <button onclick="changeColor('#FF0000')" class="interactive-button bg-red-600 text-white px-4 py-2 text-base rounded-xl">Rouge</button>
+              <button onclick="changeColor('#0000FF')" class="interactive-button bg-blue-800 text-white px-4 py-2 text-base rounded-xl">Bleu</button>
+            </div>
+          </div>
+          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Divers</h2>
+            <div class="flex justify-center">
+              <button onclick="openInstructions()" class="interactive-button bg-purple-600 text-white px-4 py-2 text-base rounded-xl">À lire</button>
             </div>
           </div>
         </div>
-        <div class="flex gap-1 justify-center">
-          <button onclick="deleteAnnotation()"
-            class="interactive-button bg-red-600 text-white px-3 py-1.5 text-sm rounded-lg">Effacer</button>
-          <button onclick="exportPDF()"
-            class="interactive-button bg-green-500 text-white px-3 py-1.5 text-sm rounded-lg">Exporter PDF</button>
+        <div class="flex gap-3 justify-center">
+          <button onclick="deleteAnnotation()" class="interactive-button bg-red-600 text-white px-4 py-2 text-base rounded-xl">Effacer</button>
+          <button onclick="exportPDF()" class="interactive-button bg-green-600 text-white px-4 py-2 text-base rounded-xl">Exporter PDF</button>
         </div>
       </div>
     </div>
-    <div id="canvas-container">
+    <div id="canvas-container" class="mt-6">
       <canvas id="pdf-canvas" class="cursor-text mx-auto"></canvas>
+    </div>
+  </div>
+
+  <!-- Modale pour les instructions -->
+  <div id="instructions-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+    <div class="modal-content bg-white p-8 rounded-xl shadow-lg relative max-w-lg">
+      <button onclick="closeInstructions()" class="close-button absolute top-4 right-4 text-gray-600 hover:text-gray-800">
+        <span class="text-2xl">×</span>
+      </button>
+      <h2 class="text-2xl font-semibold mb-6 text-center text-purple-600">Comment utiliser l’Éditeur PDF</h2>
+      <div class="text-gray-700 text-base space-y-4">
+        <p>Salut ! Voici comment jouer avec cet outil pour modifier un PDF. C’est super facile !</p>
+        <p><strong>1. Mets un PDF</strong><br>
+        Clique sur la boîte en haut qui dit "Choisir un fichier". Cherche un PDF sur ton ordinateur et clique dessus. Tu vas voir le PDF apparaître en bas.</p>
+        <p><strong>2. Écris quelque chose</strong><br>
+        Clique sur le PDF là où tu veux écrire. Une petite boîte va apparaître. Tape ton mot ou ta phrase dedans, et appuie sur la touche "Entrer" de ton clavier pour le garder. Si tu changes d’avis, appuie sur "Échap" pour annuler.</p>
+        <p><strong>3. Change la taille du texte</strong><br>
+        Clique sur ton texte pour le choisir (il deviendra jaune). Ensuite, clique sur un bouton dans "Tailles" (14, 16, 18, ou 20) pour rendre ton texte plus petit ou plus grand.</p>
+        <p><strong>4. Change la couleur</strong><br>
+        Clique sur ton texte pour le choisir, puis clique sur une couleur dans "Couleurs" (Noir, Rouge, ou Bleu) pour changer sa couleur.</p>
+        <p><strong>5. Déplace ton texte</strong><br>
+        Clique sur ton texte, tiens le clic, et bouge ta souris pour le mettre ailleurs. Relâche quand c’est bien placé.</p>
+        <p><strong>6. Efface un texte</strong><br>
+        Clique sur le texte que tu veux enlever, puis clique sur le bouton "Effacer". Pof, il disparaît !</p>
+        <p><strong>7. Garde ton PDF</strong><br>
+        Quand tu as fini, clique sur "Exporter PDF". Ça va télécharger ton PDF avec tout ce que tu as écrit dessus.</p>
+        <p>Amuse-toi bien !</p>
+      </div>
     </div>
   </div>
 
@@ -122,11 +157,15 @@
     let isDragging = false;
     let isRendering = false;
     let clickTimeout = null;
+    let originalFileName = ''; // Variable pour stocker le nom du fichier initial
 
-    // Charger le PDF
+    // Charger le PDF et récupérer le nom du fichier
     pdfInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      // Stocker le nom du fichier initial
+      originalFileName = file.name;
       const arrayBuffer = await file.arrayBuffer();
       originalBytes = arrayBuffer;
       pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
@@ -156,7 +195,7 @@
 
       tempInput.addEventListener('input', () => {
         drawAnnotations();
-        ctx.font = `18px Arial`; // Taille et police ajustées
+        ctx.font = `18px 'Inter', sans-serif`; // Taille et police ajustées
         ctx.fillStyle = '#000000';
         ctx.fillText(tempInput.value, x / scale, (pageHeight - y / scale) * scale);
       });
@@ -183,7 +222,7 @@
       return annotations.find(ann => {
         const canvasX = ann.x * scale;
         const canvasY = (pageHeight - ann.y) * scale;
-        ctx.font = `${ann.size * scale}px Arial`;
+        ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
         const textWidth = ctx.measureText(ann.text).width;
         const textHeight = ann.size * scale;
         return (
@@ -290,7 +329,7 @@
           annotations.forEach(ann => {
             const canvasX = ann.x * scale;
             const canvasY = (pageHeight - ann.y) * scale;
-            ctx.font = `${ann.size * scale}px Arial`;
+            ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
             if (ann === selectedAnnotation) {
               ctx.fillStyle = 'yellow';
               ctx.fillRect(canvasX, canvasY - ann.size * scale, ctx.measureText(ann.text).width, ann.size * scale);
@@ -334,7 +373,7 @@
       }
     }
 
-    // Exporter le PDF modifié
+    // Exporter le PDF modifié avec un nom personnalisé
     async function exportPDF() {
       if (!originalBytes) {
         console.error("Aucun PDF chargé pour l'exportation");
@@ -362,7 +401,18 @@
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'edited.pdf';
+
+        // Construire le nom du fichier exporté : "édité-(nom initial).pdf"
+        let exportFileName = 'edited.pdf'; // Nom par défaut
+        if (originalFileName) {
+          // Retirer l'extension .pdf si elle existe
+          const baseName = originalFileName.toLowerCase().endsWith('.pdf')
+            ? originalFileName.slice(0, -4)
+            : originalFileName;
+          exportFileName = `édité-${baseName}.pdf`;
+        }
+        link.download = exportFileName;
+
         link.click();
       } catch (error) {
         console.error("Erreur lors de l'exportation du PDF:", error);
@@ -377,6 +427,15 @@
       return { r, g, b };
     }
 
+    // Fonctions pour ouvrir et fermer la modale
+    function openInstructions() {
+      document.getElementById('instructions-modal').classList.remove('hidden');
+    }
+
+    function closeInstructions() {
+      document.getElementById('instructions-modal').classList.add('hidden');
+    }
+
     // Événements
     canvas.addEventListener('click', handleCanvasClick);
     canvas.addEventListener('dblclick', handleCanvasDoubleClick);
@@ -385,5 +444,4 @@
     canvas.addEventListener('mouseup', handleMouseUp);
   </script>
 </body>
-
 </html>
