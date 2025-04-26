@@ -1,454 +1,994 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Éditeur PDF: nanou</title>
-  <link rel="icon" type="image/png" href="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=source" onerror="console.error('Erreur de chargement du favicon:', this.href)">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
-  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .cursor-text { cursor: text; }
-    .highlight { background-color: yellow; }
-    canvas {
-      border: none;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    #canvas-container {
-      position: relative;
-      width: 100%; /* Assure que le conteneur prend toute la largeur disponible */
-    }
-    #tempInput {
-      position: absolute;
-      border: 1px solid #e5e7eb;
-      background: white;
-      font-family: 'Inter', sans-serif;
-      font-size: 18px;
-      outline: none;
-      padding: 4px;
-      z-index: 1000;
-    }
-    .interactive-button {
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    .interactive-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
-    .interactive-button:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-    .header-logo {
-      height: 40px; /* Retour à la taille initiale */
-    }
-    #instructions-modal {
-      z-index: 2000;
-    }
-    .modal-content {
-      max-width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .close-button {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      transition: background-color 0.3s ease;
-    }
-    .close-button:hover {
-      background-color: #f3f4f6;
-    }
-  </style>
-</head>
-<body class="bg-gray-50">
-  <div class="p-6 max-w-5xl mx-auto">
-    <div class="flex items-center justify-center mb-6 space-x-3">
-      <img src="logo-editeur-pdf.png" alt="Logo Éditeur PDF" class="header-logo">
-      <span class="text-xs text-gray-500">Powered by NaNou</span> <!-- Réduction de la taille du texte -->
-    </div>
-    <div class="flex flex-col space-y-6">
-      <input type="file" id="pdfInput" accept="application/pdf" class="border-none p-4 text-base rounded-xl w-full bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-      <div class="flex flex-col space-y-6">
-        <div class="flex flex-wrap gap-6 justify-center">
-          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">Tailles</h2>
-            <div class="flex gap-2">
-              <button onclick="changeSize(14)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">14</button>
-              <button onclick="changeSize(16)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">16</button>
-              <button onclick="changeSize(18)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">18</button>
-              <button onclick="changeSize(20)" class="interactive-button bg-blue-600 text-white px-4 py-2 text-base rounded-xl">20</button>
-            </div>
-          </div>
-          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">Couleurs</h2>
-            <div class="flex gap-2">
-              <button onclick="changeColor('#000000')" class="interactive-button bg-gray-800 text-white px-4 py-2 text-base rounded-xl">Noir</button>
-              <button onclick="changeColor('#FF0000')" class="interactive-button bg-red-600 text-white px-4 py-2 text-base rounded-xl">Rouge</button>
-              <button onclick="changeColor('#0000FF')" class="interactive-button bg-blue-800 text-white px-4 py-2 text-base rounded-xl">Bleu</button>
-            </div>
-          </div>
-          <div class="flex flex-col items-center rounded-xl p-6 bg-white shadow-md">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800">Divers</h2>
-            <div class="flex justify-center">
-              <button onclick="openInstructions()" class="interactive-button bg-purple-600 text-white px-4 py-2 text-base rounded-xl">À lire</button>
-            </div>
-          </div>
-        </div>
-        <div class="flex gap-3 justify-center">
-          <button onclick="deleteAnnotation()" class="interactive-button bg-red-600 text-white px-4 py-2 text-base rounded-xl">Effacer</button>
-          <button onclick="exportPDF()" class="interactive-button bg-green-600 text-white px-4 py-2 text-base rounded-xl">Exporter PDF</button>
-        </div>
-      </div>
-    </div>
-    <div id="canvas-container" class="mt-6">
-      <canvas id="pdf-canvas" class="cursor-text mx-auto"></canvas>
-    </div>
-  </div>
-
-  <!-- Modale pour les instructions -->
-  <div id="instructions-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-    <div class="modal-content bg-white p-8 rounded-xl shadow-lg relative max-w-lg">
-      <button onclick="closeInstructions()" class="close-button absolute top-4 right-4 text-gray-600 hover:text-gray-800">
-        <span class="text-2xl">×</span>
-      </button>
-      <h2 class="text-2xl font-semibold mb-6 text-center text-purple-600">Comment utiliser l’Éditeur PDF</h2>
-      <div class="text-gray-700 text-base space-y-4">
-        <p>Salut ! Voici comment jouer avec cet outil pour modifier un PDF. C’est super facile !</p>
-        <p><strong>1. Mets un PDF</strong><br>
-        Clique sur la boîte en haut qui dit "Choisir un fichier". Cherche un PDF sur ton ordinateur et clique dessus. Tu vas voir le PDF apparaître en bas.</p>
-        <p><strong>2. Écris quelque chose</strong><br>
-        Clique sur le PDF là où tu veux écrire. Une petite boîte va apparaître. Tape ton mot ou ta phrase dedans, et appuie sur la touche "Entrer" de ton clavier pour le garder. Si tu changes d’avis, appuie sur "Échap" pour annuler.</p>
-        <p><strong>3. Change la taille du texte</strong><br>
-        Clique sur ton texte pour le choisir (il deviendra jaune). Ensuite, clique sur un bouton dans "Tailles" (14, 16, 18, ou 20) pour rendre ton texte plus petit ou plus grand.</p>
-        <p><strong>4. Change la couleur</strong><br>
-        Clique sur ton texte pour le choisir, puis clique sur une couleur dans "Couleurs" (Noir, Rouge, ou Bleu) pour changer sa couleur.</p>
-        <p><strong>5. Déplace ton texte</strong><br>
-        Clique sur ton texte, tiens le clic, et bouge ta souris pour le mettre ailleurs. Relâche quand c’est bien placé.</p>
-        <p><strong>6. Efface un texte</strong><br>
-        Clique sur le texte que tu veux enlever, puis clique sur le bouton "Effacer". Pof, il disparaît !</p>
-        <p><strong>7. Garde ton PDF</strong><br>
-        Quand tu as fini, clique sur "Exporter PDF". Ça va télécharger ton PDF avec tout ce que tu as écrit dessus.</p>
-        <p>Amuse-toi bien !</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const canvas = document.getElementById('pdf-canvas');
-    const ctx = canvas.getContext('2d');
-    const pdfInput = document.getElementById('pdfInput');
-    const canvasContainer = document.getElementById('canvas-container');
-    let annotations = [];
-    let selectedAnnotation = null;
-    let pdfDoc = null;
-    let originalBytes = null;
-    let pageHeight = 842; // Hauteur par défaut (A4)
-    let scale = 1; // Échelle initiale, sera ajustée dynamiquement
-    let tempInput = null;
-    let isDragging = false;
-    let isRendering = false;
-    let clickTimeout = null;
-    let originalFileName = ''; // Variable pour stocker le nom du fichier initial
-
-    // Charger le PDF et ajuster dynamiquement l'échelle
-    pdfInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Stocker le nom du fichier initial
-      originalFileName = file.name;
-      const arrayBuffer = await file.arrayBuffer();
-      originalBytes = arrayBuffer;
-      pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-      const page = await pdfDoc.getPage(1);
-      const defaultViewport = page.getViewport({ scale: 1 }); // Échelle de 1 pour obtenir la largeur native
-      const pdfWidth = defaultViewport.width; // Largeur native du PDF
-
-      // Calculer l'échelle en fonction de la largeur du conteneur
-      const containerWidth = canvasContainer.clientWidth;
-      scale = containerWidth / pdfWidth; // Ajuster l'échelle pour que le PDF rentre dans le conteneur
-
-      const viewport = page.getViewport({ scale });
-      pageHeight = page.view[3]; // Hauteur réelle
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      page.render({
-        canvasContext: ctx,
-        viewport: viewport,
-      }).promise.then(() => drawAnnotations());
-    });
-
-    // Créer un champ de saisie temporaire pour écrire directement
-    function createTempInput(x, y) {
-      if (tempInput) tempInput.remove();
-      tempInput = document.createElement('input');
-      tempInput.id = 'tempInput';
-      tempInput.style.left = `${x}px`;
-      tempInput.style.top = `${y}px`;
-      canvasContainer.appendChild(tempInput);
-      tempInput.focus();
-
-      tempInput.addEventListener('input', () => {
-        drawAnnotations();
-        ctx.font = `18px 'Inter', sans-serif`; // Taille et police ajustées
-        ctx.fillStyle = '#000000';
-        ctx.fillText(tempInput.value, x / scale, (pageHeight - y / scale) * scale);
-      });
-
-      tempInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          const text = tempInput.value.trim();
-          if (text) {
-            annotations.push({ text, x: x / scale, y: pageHeight - y / scale, size: 16, color: '#000000' });
-          }
-          tempInput.remove();
-          tempInput = null;
-          drawAnnotations();
-        } else if (e.key === 'Escape') {
-          tempInput.remove();
-          tempInput = null;
-          drawAnnotations();
+    <meta charset="UTF-8">
+    <title>Éditeur PDF: nanou</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/337/337946.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            padding-bottom: 40px;
+            /* Space for footer */
         }
-      });
-    }
 
-    // Détecter si la souris est au-dessus d'une annotation
-    function isMouseOverAnnotation(mouseX, mouseY) {
-      return annotations.find(ann => {
-        const canvasX = ann.x * scale;
-        const canvasY = (pageHeight - ann.y) * scale;
-        ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
-        const textWidth = ctx.measureText(ann.text).width;
-        const textHeight = ann.size * scale;
-        return (
-          mouseX >= canvasX &&
-          mouseX <= canvasX + textWidth &&
-          mouseY >= canvasY - textHeight &&
-          mouseY <= canvasY
-        );
-      });
-    }
-
-    // Gérer le clic simple sur le canvas
-    function handleCanvasClick(e) {
-      if (clickTimeout) clearTimeout(clickTimeout);
-
-      clickTimeout = setTimeout(() => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // Vérifier si le clic est sur une annotation existante
-        selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
-
-        if (!selectedAnnotation) {
-          // Pas d'annotation sélectionnée, créer un champ de saisie
-          createTempInput(mouseX, mouseY);
+        .cursor-text {
+            cursor: text;
         }
-        drawAnnotations();
-      }, 200); // Délai pour différencier clic simple et double-clic
-    }
 
-    // Gérer le double-clic sur le canvas
-    function handleCanvasDoubleClick(e) {
-      clearTimeout(clickTimeout); // Annuler le clic simple
+        .highlight {
+            background-color: rgba(253, 230, 138, 0.5);
+        }
 
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+        canvas {
+            border: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            transition: transform 0.2s ease;
+        }
 
-      // Vérifier si le double-clic est sur une annotation existante
-      selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            margin: 0 auto;
+            overflow: auto;
+        }
 
-      if (selectedAnnotation) {
-        // Surligner l'annotation pour indiquer qu'elle est en mode "modifier"
-        drawAnnotations();
-      }
-    }
+        #tempInput {
+            position: absolute;
+            border: 2px solid #3b82f6;
+            background: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            outline: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            min-width: 200px;
+        }
 
-    // Gérer le survol pour changer le curseur
-    function handleMouseMove(e) {
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+        .interactive-button {
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
 
-      // Vérifier si la souris est au-dessus de l'annotation surlignée
-      if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
-        canvas.style.cursor = 'pointer';
-      } else {
-        canvas.style.cursor = 'text';
-      }
+        .interactive-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
 
-      // Gérer le déplacement si en mode drag
-      if (isDragging && selectedAnnotation) {
-        selectedAnnotation.x = mouseX / scale;
-        selectedAnnotation.y = pageHeight - (mouseY / scale);
-        drawAnnotations();
-      }
-    }
+        .interactive-button:active {
+            transform: translateY(0);
+        }
 
-    // Gérer le début du déplacement
-    function handleMouseDown(e) {
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+        .header-logo {
+            height: 48px;
+        }
 
-      // Vérifier si le clic est sur une annotation surlignée
-      if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
-        isDragging = true;
-      }
-    }
+        #instructions-modal {
+            z-index: 2000;
+        }
 
-    // Arrêter le déplacement
-    function handleMouseUp() {
-      isDragging = false;
-    }
+        .modal-content {
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #f1f5f9;
+        }
 
-    // Dessiner toutes les annotations
-    function drawAnnotations() {
-      if (!pdfDoc) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
 
-      if (isRendering) return;
-      isRendering = true;
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
 
-      pdfDoc.getPage(1).then(page => {
-        const viewport = page.getViewport({ scale });
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        page.render({
-          canvasContext: ctx,
-          viewport: viewport,
-        }).promise.then(() => {
-          annotations.forEach(ann => {
-            const canvasX = ann.x * scale;
-            const canvasY = (pageHeight - ann.y) * scale;
-            ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
-            if (ann === selectedAnnotation) {
-              ctx.fillStyle = 'yellow';
-              ctx.fillRect(canvasX, canvasY - ann.size * scale, ctx.measureText(ann.text).width, ann.size * scale);
+        .modal-content::-webkit-scrollbar-thumb {
+            background-color: #3b82f6;
+            border-radius: 10px;
+        }
+
+        .close-button {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .close-button:hover {
+            background-color: #f1f5f9;
+            transform: rotate(90deg);
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: #1e40af;
+            transform: scale(1.1);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-input-button:hover {
+            background-color: #2563eb;
+        }
+
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .annotation-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 8px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
             }
-            ctx.fillStyle = ann.color;
-            ctx.fillText(ann.text, canvasX, canvasY);
-          });
-          isRendering = false;
-        }).catch(err => {
-          console.error("Erreur lors du rendu:", err);
-          isRendering = false;
-        });
-      }).catch(err => {
-        console.error("Erreur lors de la récupération de la page:", err);
-        isRendering = false;
-      });
-    }
-
-    // Modifier la taille
-    function changeSize(newSize) {
-      if (selectedAnnotation) {
-        selectedAnnotation.size = newSize;
-        drawAnnotations();
-      }
-    }
-
-    // Modifier la couleur
-    function changeColor(newColor) {
-      if (selectedAnnotation) {
-        selectedAnnotation.color = newColor;
-        drawAnnotations();
-      }
-    }
-
-    // Effacer l'annotation sélectionnée
-    function deleteAnnotation() {
-      if (selectedAnnotation) {
-        annotations = annotations.filter(ann => ann !== selectedAnnotation);
-        selectedAnnotation = null;
-        drawAnnotations();
-      }
-    }
-
-    // Exporter le PDF modifié avec un nom personnalisé
-    async function exportPDF() {
-      if (!originalBytes) {
-        console.error("Aucun PDF chargé pour l'exportation");
-        return;
-      }
-
-      try {
-        const pdfDoc = await PDFLib.PDFDocument.load(originalBytes);
-        const page = pdfDoc.getPage(0); // Page 1
-        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-        annotations.forEach(ann => {
-          console.log("Exportation de l'annotation:", ann);
-          const rgb = hexToRgb(ann.color);
-          page.drawText(ann.text, {
-            x: ann.x,
-            y: ann.y,
-            size: ann.size,
-            font: font,
-            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
-          });
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-
-        // Construire le nom du fichier exporté : "édité-(nom initial).pdf"
-        let exportFileName = 'edited.pdf'; // Nom par défaut
-        if (originalFileName) {
-          // Retirer l'extension .pdf si elle existe
-          const baseName = originalFileName.toLowerCase().endsWith('.pdf')
-            ? originalFileName.slice(0, -4)
-            : originalFileName;
-          exportFileName = `édité-${baseName}.pdf`;
         }
-        link.download = exportFileName;
 
-        link.click();
-      } catch (error) {
-        console.error("Erreur lors de l'exportation du PDF:", error);
-      }
-    }
+        /* Floating footer */
+        .floating-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px 0;
+            text-align: center;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
 
-    // Convertir hex en RGB
-    function hexToRgb(hex) {
-      const r = parseInt(hex.slice(1, 3), 16) / 255;
-      const g = parseInt(hex.slice(3, 5), 16) / 255;
-      const b = parseInt(hex.slice(5, 7), 16) / 255;
-      return { r, g, b };
-    }
+        /* Zoom controls */
+        .zoom-controls {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+        }
 
-    // Fonctions pour ouvrir et fermer la modale
-    function openInstructions() {
-      document.getElementById('instructions-modal').classList.remove('hidden');
-    }
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #3b82f6;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
 
-    function closeInstructions() {
-      document.getElementById('instructions-modal').classList.add('hidden');
-    }
+        .zoom-btn:hover {
+            background-color: #f1f5f9;
+        }
 
-    // Événements
-    canvas.addEventListener('click', handleCanvasClick);
-    canvas.addEventListener('dblclick', handleCanvasDoubleClick);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mouseup', handleMouseUp);
-  </script>
+        .zoom-value {
+            width: 50px;
+            text-align: center;
+            font-size: 14px;
+            color: #4b5563;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="flex flex-col items-center mb-8">
+            <div class="flex items-center space-x-3 mb-2">
+                <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" alt="Logo Éditeur PDF"
+                    class="header-logo">
+                <h1 class="text-2xl font-bold text-gray-800">ÉditeurPDF</h1>
+            </div>
+            <p class="text-sm text-gray-400">Modifiez vos PDF en toute simplicité</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- File Upload -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-file-upload mr-2 text-blue-500"></i> Importer PDF
+                    </h2>
+                    <div class="file-input-wrapper">
+                        <div class="file-input-button">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>
+                            <span>Choisir un fichier</span>
+                        </div>
+                        <input type="file" id="pdfInput" accept="application/pdf" class="file-input">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Formats supportés: .pdf</p>
+                </div>
+
+                <!-- Tools -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-tools mr-2 text-blue-500"></i> Outils
+                    </h2>
+
+                    <!-- Text Size -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Taille du texte</h3>
+                        <div class="flex gap-2">
+                            <button onclick="changeSize(12)"
+                                class="interactive-button bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 text-sm rounded-lg">12</button>
+                            <button onclick="changeSize(14)"
+                                class="interactive-button bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 text-sm rounded-lg">14</button>
+                            <button onclick="changeSize(16)"
+                                class="interactive-button bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 text-sm rounded-lg font-medium">16</button>
+                            <button onclick="changeSize(18)"
+                                class="interactive-button bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 text-sm rounded-lg">18</button>
+                            <button onclick="changeSize(20)"
+                                class="interactive-button bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 text-sm rounded-lg">20</button>
+                        </div>
+                    </div>
+
+                    <!-- Text Color -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Couleur du texte</h3>
+                        <div class="flex gap-3">
+                            <div class="color-option bg-black active" onclick="changeColor('#000000')" title="Noir">
+                            </div>
+                            <div class="color-option bg-red-500" onclick="changeColor('#EF4444')" title="Rouge"></div>
+                            <div class="color-option bg-blue-500" onclick="changeColor('#3B82F6')" title="Bleu"></div>
+                            <div class="color-option bg-green-500" onclick="changeColor('#10B981')" title="Vert"></div>
+                            <div class="color-option bg-purple-500" onclick="changeColor('#8B5CF6')" title="Violet">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="space-y-3">
+                        <button onclick="deleteAnnotation()"
+                            class="interactive-button w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-trash mr-2"></i> Effacer
+                        </button>
+                        <button onclick="exportPDF()" id="exportBtn"
+                            class="interactive-button w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-export mr-2"></i> Exporter PDF
+                        </button>
+                        <button onclick="openInstructions()"
+                            class="interactive-button w-full bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-question-circle mr-2"></i> Aide
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Annotations List -->
+                <div class="bg-white rounded-xl shadow-sm p-6" id="annotations-list-container" style="display: none;">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-list-ul mr-2 text-blue-500"></i> Vos annotations
+                    </h2>
+                    <div id="annotations-list" class="max-h-60 overflow-y-auto">
+                        <!-- Annotations will be listed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div id="canvas-container" class="relative">
+                        <!-- Zoom controls -->
+                        <div class="zoom-controls">
+                            <div class="zoom-btn" onclick="zoomOut()">
+                                <i class="fas fa-search-minus"></i>
+                            </div>
+                            <div class="zoom-value" id="zoomValue">100%</div>
+                            <div class="zoom-btn" onclick="zoomIn()">
+                                <i class="fas fa-search-plus"></i>
+                            </div>
+                        </div>
+
+                        <div id="pdf-placeholder"
+                            class="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-lg">
+                            <i class="fas fa-file-pdf text-5xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500 mb-4">Aucun PDF sélectionné</p>
+                            <button onclick="document.getElementById('pdfInput').click()"
+                                class="interactive-button bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i> Importer un PDF
+                            </button>
+                        </div>
+                        <canvas id="pdf-canvas" class="cursor-text w-full hidden"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Footer -->
+    <div class="floating-footer">
+        <p class="text-xs text-gray-300">2025 Powered by Nanou</p>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructions-modal"
+        class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="modal-content bg-white p-8 rounded-xl shadow-lg relative w-full max-w-2xl">
+            <button onclick="closeInstructions()"
+                class="close-button absolute top-4 right-4 text-gray-600 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-6 text-center text-blue-600 flex items-center justify-center">
+                <i class="fas fa-question-circle mr-3"></i> Guide d'utilisation
+            </h2>
+            <div class="text-gray-700 space-y-4">
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">1</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Importer un PDF</h3>
+                        <p class="text-sm">Cliquez sur "Choisir un fichier" pour sélectionner un PDF depuis votre
+                            ordinateur. Le document apparaîtra dans la zone d'édition.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">2</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Ajouter du texte</h3>
+                        <p class="text-sm">Cliquez sur le PDF à l'endroit où vous souhaitez ajouter du texte. Une zone
+                            de saisie apparaîtra. Tapez votre texte et appuyez sur Entrée pour le valider.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">3</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Modifier le texte</h3>
+                        <p class="text-sm">Cliquez sur un texte existant pour le sélectionner (il sera surligné).
+                            Utilisez les outils à gauche pour modifier sa taille, couleur ou position.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">4</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Déplacer le texte</h3>
+                        <p class="text-sm">Cliquez sur un texte, maintenez le clic et déplacez-le à l'endroit souhaité.
+                            Relâchez pour confirmer la nouvelle position.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">5</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Supprimer du texte</h3>
+                        <p class="text-sm">Sélectionnez un texte et cliquez sur "Effacer" pour le supprimer
+                            définitivement.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">6</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Exporter le PDF</h3>
+                        <p class="text-sm">Une fois vos modifications terminées, cliquez sur "Exporter PDF" pour
+                            télécharger votre document modifié.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start">
+                    <div class="bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-3">
+                        <span class="text-blue-600 font-bold">7</span>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold mb-1">Zoom</h3>
+                        <p class="text-sm">Utilisez les boutons + et - en haut à droite pour zoomer ou dézoomer sur le
+                            document.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-gray-200 flex justify-center">
+                <button onclick="closeInstructions()"
+                    class="interactive-button bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                    Compris !
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const pdfInput = document.getElementById('pdfInput');
+        const canvasContainer = document.getElementById('canvas-container');
+        const pdfPlaceholder = document.getElementById('pdf-placeholder');
+        const annotationsListContainer = document.getElementById('annotations-list-container');
+        const annotationsList = document.getElementById('annotations-list');
+        const exportBtn = document.getElementById('exportBtn');
+        const zoomValue = document.getElementById('zoomValue');
+
+        let annotations = [];
+        let selectedAnnotation = null;
+        let pdfDoc = null;
+        let originalBytes = null;
+        let pageHeight = 842;
+        let scale = 1;
+        let tempInput = null;
+        let isDragging = false;
+        let isRendering = false;
+        let clickTimeout = null;
+        let originalFileName = '';
+        let defaultColor = '#000000';
+        let defaultSize = 16;
+        let currentZoom = 100; // Zoom level in percentage
+        let baseScale = 1; // Base scale before zoom
+
+        // Initialize color picker
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', function () {
+                document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // File input change handler
+        pdfInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show loading state
+            exportBtn.innerHTML = '<div class="loading-spinner mr-2"></div> Chargement...';
+            exportBtn.disabled = true;
+
+            originalFileName = file.name;
+            const arrayBuffer = await file.arrayBuffer();
+            originalBytes = arrayBuffer;
+
+            try {
+                pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const page = await pdfDoc.getPage(1);
+                const defaultViewport = page.getViewport({ scale: 1 });
+                const pdfWidth = defaultViewport.width;
+
+                // Calculate base scale to fit container
+                const containerWidth = canvasContainer.clientWidth;
+                baseScale = containerWidth / pdfWidth;
+                currentZoom = 100;
+                updateZoom();
+
+                const viewport = page.getViewport({ scale: scale });
+                pageHeight = page.view[3];
+
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                // Hide placeholder, show canvas
+                pdfPlaceholder.classList.add('hidden');
+                canvas.classList.remove('hidden');
+
+                // Show annotations list
+                annotationsListContainer.style.display = 'block';
+
+                await page.render({
+                    canvasContext: ctx,
+                    viewport: viewport,
+                }).promise;
+
+                drawAnnotations();
+                updateAnnotationsList();
+
+                // Reset export button
+                exportBtn.innerHTML = '<i class="fas fa-file-export mr-2"></i> Exporter PDF';
+                exportBtn.disabled = false;
+            } catch (error) {
+                console.error("Error loading PDF:", error);
+                alert("Une erreur est survenue lors du chargement du PDF. Veuillez réessayer.");
+                exportBtn.innerHTML = '<i class="fas fa-file-export mr-2"></i> Exporter PDF';
+                exportBtn.disabled = false;
+            }
+        });
+
+        // Zoom functions
+        function zoomIn() {
+            if (currentZoom < 200) {
+                currentZoom += 10;
+                updateZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom > 50) {
+                currentZoom -= 10;
+                updateZoom();
+            }
+        }
+
+        function updateZoom() {
+            if (!pdfDoc) return;
+
+            scale = baseScale * (currentZoom / 100);
+            zoomValue.textContent = `${currentZoom}%`;
+
+            // Re-render PDF with new zoom
+            pdfDoc.getPage(1).then(page => {
+                const viewport = page.getViewport({ scale });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                page.render({
+                    canvasContext: ctx,
+                    viewport: viewport,
+                }).promise.then(() => {
+                    drawAnnotations();
+                });
+            });
+        }
+
+        // Create temporary input for text
+        function createTempInput(x, y) {
+            if (tempInput) tempInput.remove();
+
+            tempInput = document.createElement('input');
+            tempInput.id = 'tempInput';
+            tempInput.style.left = `${x}px`;
+            tempInput.style.top = `${y}px`;
+            tempInput.placeholder = "Tapez votre texte ici...";
+            canvasContainer.appendChild(tempInput);
+            tempInput.focus();
+
+            tempInput.addEventListener('input', () => {
+                drawAnnotations();
+                ctx.font = `${defaultSize * scale}px 'Inter', sans-serif`;
+                ctx.fillStyle = defaultColor;
+                ctx.fillText(tempInput.value, x / scale, (pageHeight - y / scale) * scale);
+            });
+
+            tempInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const text = tempInput.value.trim();
+                    if (text) {
+                        annotations.push({
+                            text,
+                            x: x / scale,
+                            y: pageHeight - y / scale,
+                            size: defaultSize,
+                            color: defaultColor,
+                            id: Date.now().toString()
+                        });
+                        updateAnnotationsList();
+                    }
+                    tempInput.remove();
+                    tempInput = null;
+                    drawAnnotations();
+                } else if (e.key === 'Escape') {
+                    tempInput.remove();
+                    tempInput = null;
+                    drawAnnotations();
+                }
+            });
+        }
+
+        // Check if mouse is over an annotation
+        function isMouseOverAnnotation(mouseX, mouseY) {
+            return annotations.find(ann => {
+                const canvasX = ann.x * scale;
+                const canvasY = (pageHeight - ann.y) * scale;
+                ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
+                const textWidth = ctx.measureText(ann.text).width;
+                const textHeight = ann.size * scale;
+                return (
+                    mouseX >= canvasX &&
+                    mouseX <= canvasX + textWidth &&
+                    mouseY >= canvasY - textHeight &&
+                    mouseY <= canvasY
+                );
+            });
+        }
+
+        // Handle canvas click
+        function handleCanvasClick(e) {
+            if (clickTimeout) clearTimeout(clickTimeout);
+
+            clickTimeout = setTimeout(() => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
+
+                if (!selectedAnnotation) {
+                    createTempInput(mouseX, mouseY);
+                }
+                drawAnnotations();
+                updateAnnotationsList();
+            }, 200);
+        }
+
+        // Handle double click
+        function handleCanvasDoubleClick(e) {
+            clearTimeout(clickTimeout);
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
+
+            if (selectedAnnotation) {
+                createTempInput(mouseX, mouseY);
+                tempInput.value = selectedAnnotation.text;
+            }
+        }
+
+        // Handle mouse movement
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
+                canvas.style.cursor = 'move';
+            } else {
+                canvas.style.cursor = 'text';
+            }
+
+            if (isDragging && selectedAnnotation) {
+                selectedAnnotation.x = mouseX / scale;
+                selectedAnnotation.y = pageHeight - (mouseY / scale);
+                drawAnnotations();
+                updateAnnotationsList();
+            }
+        }
+
+        // Handle mouse down
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
+                isDragging = true;
+            }
+        }
+
+        // Handle mouse up
+        function handleMouseUp() {
+            isDragging = false;
+        }
+
+        // Draw all annotations
+        function drawAnnotations() {
+            if (!pdfDoc) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            if (isRendering) return;
+            isRendering = true;
+
+            pdfDoc.getPage(1).then(page => {
+                const viewport = page.getViewport({ scale });
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                page.render({
+                    canvasContext: ctx,
+                    viewport: viewport,
+                }).promise.then(() => {
+                    annotations.forEach(ann => {
+                        const canvasX = ann.x * scale;
+                        const canvasY = (pageHeight - ann.y) * scale;
+                        ctx.font = `${ann.size * scale}px 'Inter', sans-serif`;
+
+                        if (ann === selectedAnnotation) {
+                            // Draw highlight background
+                            const textWidth = ctx.measureText(ann.text).width;
+                            ctx.fillStyle = 'rgba(253, 230, 138, 0.5)';
+                            ctx.fillRect(canvasX, canvasY - ann.size * scale, textWidth, ann.size * scale);
+
+                            // Draw border
+                            ctx.strokeStyle = '#f59e0b';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(canvasX, canvasY - ann.size * scale, textWidth, ann.size * scale);
+                        }
+
+                        ctx.fillStyle = ann.color;
+                        ctx.fillText(ann.text, canvasX, canvasY);
+                    });
+
+                    isRendering = false;
+                }).catch(err => {
+                    console.error("Rendering error:", err);
+                    isRendering = false;
+                });
+            }).catch(err => {
+                console.error("Page error:", err);
+                isRendering = false;
+            });
+        }
+
+        // Change text size
+        function changeSize(newSize) {
+            if (selectedAnnotation) {
+                selectedAnnotation.size = newSize;
+                defaultSize = newSize;
+                drawAnnotations();
+                updateAnnotationsList();
+            } else {
+                defaultSize = newSize;
+            }
+        }
+
+        // Change text color
+        function changeColor(newColor) {
+            if (selectedAnnotation) {
+                selectedAnnotation.color = newColor;
+                defaultColor = newColor;
+                drawAnnotations();
+                updateAnnotationsList();
+            } else {
+                defaultColor = newColor;
+            }
+        }
+
+        // Delete annotation
+        function deleteAnnotation() {
+            if (selectedAnnotation) {
+                annotations = annotations.filter(ann => ann !== selectedAnnotation);
+                selectedAnnotation = null;
+                drawAnnotations();
+                updateAnnotationsList();
+            }
+        }
+
+        // Export PDF
+        async function exportPDF() {
+            if (!originalBytes) {
+                alert("Veuillez d'abord importer un PDF à modifier.");
+                return;
+            }
+
+            if (annotations.length === 0) {
+                alert("Vous n'avez ajouté aucune annotation. Aucune modification à exporter.");
+                return;
+            }
+
+            try {
+                // Show loading state
+                exportBtn.innerHTML = '<div class="loading-spinner mr-2"></div> Export en cours...';
+                exportBtn.disabled = true;
+
+                const pdfDoc = await PDFLib.PDFDocument.load(originalBytes);
+                const page = pdfDoc.getPage(0);
+                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+                annotations.forEach(ann => {
+                    const rgb = hexToRgb(ann.color);
+                    page.drawText(ann.text, {
+                        x: ann.x,
+                        y: ann.y,
+                        size: ann.size,
+                        font: font,
+                        color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+                    });
+                });
+
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+
+                let exportFileName = 'edited.pdf';
+                if (originalFileName) {
+                    const baseName = originalFileName.toLowerCase().endsWith('.pdf')
+                        ? originalFileName.slice(0, -4)
+                        : originalFileName;
+                    exportFileName = `modifie-${baseName}.pdf`;
+                }
+                link.download = exportFileName;
+
+                link.click();
+
+                // Reset button
+                exportBtn.innerHTML = '<i class="fas fa-file-export mr-2"></i> Exporter PDF';
+                exportBtn.disabled = false;
+            } catch (error) {
+                console.error("Export error:", error);
+                alert("Une erreur est survenue lors de l'exportation du PDF.");
+
+                // Reset button
+                exportBtn.innerHTML = '<i class="fas fa-file-export mr-2"></i> Exporter PDF';
+                exportBtn.disabled = false;
+            }
+        }
+
+        // Hex to RGB converter
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            return { r, g, b };
+        }
+
+        // Update annotations list
+        function updateAnnotationsList() {
+            annotationsList.innerHTML = '';
+
+            if (annotations.length === 0) {
+                annotationsList.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">Aucune annotation ajoutée</p>';
+                return;
+            }
+
+            annotations.forEach((ann, index) => {
+                const annElement = document.createElement('div');
+                annElement.className = `annotation-card ${ann === selectedAnnotation ? 'border-l-4 border-blue-500' : ''}`;
+                annElement.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-sm font-medium truncate">${ann.text}</p>
+              <p class="text-xs text-gray-500 mt-1">Taille: ${ann.size}px • Couleur: <span style="color:${ann.color}">${ann.color}</span></p>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="selectAnnotationFromList('${ann.id}')" class="text-blue-500 hover:text-blue-700 text-sm">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button onclick="deleteAnnotationFromList('${ann.id}')" class="text-red-500 hover:text-red-700 text-sm">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+                annotationsList.appendChild(annElement);
+            });
+        }
+
+        // Select annotation from list
+        function selectAnnotationFromList(id) {
+            selectedAnnotation = annotations.find(ann => ann.id === id);
+            drawAnnotations();
+
+            // Scroll to annotation on canvas
+            if (selectedAnnotation) {
+                const canvasX = selectedAnnotation.x * scale;
+                const canvasY = (pageHeight - selectedAnnotation.y) * scale;
+                canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // Delete annotation from list
+        function deleteAnnotationFromList(id) {
+            annotations = annotations.filter(ann => ann.id !== id);
+            if (selectedAnnotation && selectedAnnotation.id === id) {
+                selectedAnnotation = null;
+            }
+            drawAnnotations();
+            updateAnnotationsList();
+        }
+
+        // Open instructions modal
+        function openInstructions() {
+            document.getElementById('instructions-modal').classList.remove('hidden');
+        }
+
+        // Close instructions modal
+        function closeInstructions() {
+            document.getElementById('instructions-modal').classList.add('hidden');
+        }
+
+        // Event listeners
+        canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('dblclick', handleCanvasDoubleClick);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        canvas.addEventListener('mouseleave', handleMouseUp);
+
+        // Make functions available globally
+        window.selectAnnotationFromList = selectAnnotationFromList;
+        window.deleteAnnotationFromList = deleteAnnotationFromList;
+        window.zoomIn = zoomIn;
+        window.zoomOut = zoomOut;
+    </script>
 </body>
+
 </html>
