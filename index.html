@@ -45,7 +45,7 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
     .header-logo {
-      height: 160px; /* Augmentation x2 de la taille précédente (80px -> 160px) */
+      height: 40px; /* Retour à la taille initiale */
     }
     #instructions-modal {
       z-index: 2000;
@@ -73,7 +73,7 @@
   <div class="p-6 max-w-5xl mx-auto">
     <div class="flex items-center justify-center mb-6 space-x-3">
       <img src="logo-editeur-pdf.png" alt="Logo Éditeur PDF" class="header-logo">
-      <span class="text-sm text-gray-500">Powered by NaNou</span>
+      <span class="text-xs text-gray-500">Powered by NaNou</span> <!-- Réduction de la taille du texte -->
     </div>
     <div class="flex flex-col space-y-6">
       <input type="file" id="pdfInput" accept="application/pdf" class="border-none p-4 text-base rounded-xl w-full bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
