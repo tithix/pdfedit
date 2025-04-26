@@ -3,7 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Éditeur PDF Direct</title>
+  <title>Éditeur PDF:nanou</title>
+  <link rel="icon" type="image/png"
+    href="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=source"
+    onerror="console.error('Erreur de chargement du favicon:', this.href)">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -72,30 +75,30 @@
         <div class="flex flex-wrap gap-4 justify-center">
           <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
             <h2 class="text-lg font-semibold mb-2">Tailles</h2>
-            <div class="flex gap-2">
+            <div class="flex gap-1">
               <button onclick="changeSize(20)"
-                class="interactive-button bg-blue-500 text-white px-6 py-3 text-lg rounded-lg">Taille 20</button>
+                class="interactive-button bg-blue-500 text-white px-3 py-1.5 text-sm rounded-lg">Taille 20</button>
               <button onclick="changeSize(30)"
-                class="interactive-button bg-blue-500 text-white px-6 py-3 text-lg rounded-lg">Taille 30</button>
+                class="interactive-button bg-blue-500 text-white px-3 py-1.5 text-sm rounded-lg">Taille 30</button>
             </div>
           </div>
           <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
             <h2 class="text-lg font-semibold mb-2">Couleurs</h2>
-            <div class="flex gap-2">
+            <div class="flex gap-1">
               <button onclick="changeColor('#000000')"
-                class="interactive-button bg-black text-white px-6 py-3 text-lg rounded-lg">Noir</button>
+                class="interactive-button bg-black text-white px-3 py-1.5 text-sm rounded-lg">Noir</button>
               <button onclick="changeColor('#FF0000')"
-                class="interactive-button bg-red-500 text-white px-6 py-3 text-lg rounded-lg">Rouge</button>
+                class="interactive-button bg-red-500 text-white px-3 py-1.5 text-sm rounded-lg">Rouge</button>
               <button onclick="changeColor('#0000FF')"
-                class="interactive-button bg-blue-700 text-white px-6 py-3 text-lg rounded-lg">Bleu</button>
+                class="interactive-button bg-blue-700 text-white px-3 py-1.5 text-sm rounded-lg">Bleu</button>
             </div>
           </div>
         </div>
-        <div class="flex gap-4 justify-center">
+        <div class="flex gap-1 justify-center">
           <button onclick="deleteAnnotation()"
-            class="interactive-button bg-red-600 text-white px-6 py-3 text-lg rounded-lg">Effacer</button>
+            class="interactive-button bg-red-600 text-white px-3 py-1.5 text-sm rounded-lg">Effacer</button>
           <button onclick="exportPDF()"
-            class="interactive-button bg-green-500 text-white px-6 py-3 text-lg rounded-lg">Exporter PDF</button>
+            class="interactive-button bg-green-500 text-white px-3 py-1.5 text-sm rounded-lg">Exporter PDF</button>
         </div>
       </div>
     </div>
