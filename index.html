@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Éditeur PDF: nanou</title>
+  <title>Éditeur PDF Direct</title>
   <link rel="icon" type="image/png" href="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=source" onerror="console.error('Erreur de chargement du favicon:', this.href)">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
@@ -18,7 +18,10 @@
       border: none;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    #canvas-container { position: relative; }
+    #canvas-container {
+      position: relative;
+      width: 100%; /* Assure que le conteneur prend toute la largeur disponible */
+    }
     #tempInput {
       position: absolute;
       border: 1px solid #e5e7eb;
@@ -152,14 +155,14 @@
     let pdfDoc = null;
     let originalBytes = null;
     let pageHeight = 842; // Hauteur par défaut (A4)
-    const scale = 1.5; // Échelle d'affichage
+    let scale = 1; // Échelle initiale, sera ajustée dynamiquement
     let tempInput = null;
     let isDragging = false;
     let isRendering = false;
     let clickTimeout = null;
     let originalFileName = ''; // Variable pour stocker le nom du fichier initial
 
-    // Charger le PDF et récupérer le nom du fichier
+    // Charger le PDF et ajuster dynamiquement l'échelle
     pdfInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -171,6 +174,13 @@
       pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
 
       const page = await pdfDoc.getPage(1);
+      const defaultViewport = page.getViewport({ scale: 1 }); // Échelle de 1 pour obtenir la largeur native
+      const pdfWidth = defaultViewport.width; // Largeur native du PDF
+
+      // Calculer l'échelle en fonction de la largeur du conteneur
+      const containerWidth = canvasContainer.clientWidth;
+      scale = containerWidth / pdfWidth; // Ajuster l'échelle pour que le PDF rentre dans le conteneur
+
       const viewport = page.getViewport({ scale });
       pageHeight = page.view[3]; // Hauteur réelle
 
