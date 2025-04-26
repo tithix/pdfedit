@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Éditeur PDF Direct</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .cursor-text {
+      cursor: text;
+    }
+
+    .highlight {
+      background-color: yellow;
+    }
+
+    canvas {
+      border: 1px solid black;
+    }
+
+    #canvas-container {
+      position: relative;
+    }
+
+    #tempInput {
+      position: absolute;
+      border: 1px solid #ccc;
+      background: white;
+      font-family: Arial;
+      font-size: 18px;
+      outline: none;
+      padding: 2px;
+      z-index: 1000;
+    }
+
+    .interactive-button {
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .interactive-button:hover {
+      transform: scale(1.05);
+      background-color: #3b82f6;
+    }
+
+    .interactive-button:active {
+      transform: scale(0.95);
+    }
+
+    .header-icon {
+      width: 40px;
+      height: 40px;
+      margin-right: 8px;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+  <div class="p-4 max-w-4xl mx-auto">
+    <div class="flex items-center justify-center mb-4 space-x-2">
+      <img
+        src="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBQ8Wp.b5steQR.trnLQy3OMj4iTSyuckh94uIuGibVHcGT1gWAOcIk6K5kLVtX.hmvbY1Feewq6T865JKSW00Pc-&format=sourc"
+        alt="Icône Éditeur PDF" class="header-icon"
+        onerror="console.error('Erreur de chargement de l\'icône:', this.src)">
+      <h1 class="text-3xl font-bold text-center">Éditeur PDF</h1>
+      <span class="text-sm text-gray-500">Powered by NaNou</span>
+    </div>
+    <div class="flex flex-col space-y-4 mb-4">
+      <input type="file" id="pdfInput" accept="application/pdf" class="border p-3 text-lg rounded-lg w-full">
+      <div class="flex flex-col space-y-4">
+        <div class="flex flex-wrap gap-4 justify-center">
+          <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
+            <h2 class="text-lg font-semibold mb-2">Tailles</h2>
+            <div class="flex gap-2">
+              <button onclick="changeSize(20)"
+                class="interactive-button bg-blue-500 text-white px-6 py-3 text-lg rounded-lg">Taille 20</button>
+              <button onclick="changeSize(30)"
+                class="interactive-button bg-blue-500 text-white px-6 py-3 text-lg rounded-lg">Taille 30</button>
+            </div>
+          </div>
+          <div class="flex flex-col items-center border border-gray-300 rounded-lg p-4 bg-gray-50">
+            <h2 class="text-lg font-semibold mb-2">Couleurs</h2>
+            <div class="flex gap-2">
+              <button onclick="changeColor('#000000')"
+                class="interactive-button bg-black text-white px-6 py-3 text-lg rounded-lg">Noir</button>
+              <button onclick="changeColor('#FF0000')"
+                class="interactive-button bg-red-500 text-white px-6 py-3 text-lg rounded-lg">Rouge</button>
+              <button onclick="changeColor('#0000FF')"
+                class="interactive-button bg-blue-700 text-white px-6 py-3 text-lg rounded-lg">Bleu</button>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-4 justify-center">
+          <button onclick="deleteAnnotation()"
+            class="interactive-button bg-red-600 text-white px-6 py-3 text-lg rounded-lg">Effacer</button>
+          <button onclick="exportPDF()"
+            class="interactive-button bg-green-500 text-white px-6 py-3 text-lg rounded-lg">Exporter PDF</button>
+        </div>
+      </div>
+    </div>
+    <div id="canvas-container">
+      <canvas id="pdf-canvas" class="cursor-text mx-auto"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+    const pdfInput = document.getElementById('pdfInput');
+    const canvasContainer = document.getElementById('canvas-container');
+    let annotations = [];
+    let selectedAnnotation = null;
+    let pdfDoc = null;
+    let originalBytes = null;
+    let pageHeight = 842; // Hauteur par défaut (A4)
+    const scale = 1.5; // Échelle d'affichage
+    let tempInput = null;
+    let isDragging = false;
+    let isRendering = false;
+    let clickTimeout = null;
+
+    // Charger le PDF
+    pdfInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const arrayBuffer = await file.arrayBuffer();
+      originalBytes = arrayBuffer;
+      pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+
+      const page = await pdfDoc.getPage(1);
+      const viewport = page.getViewport({ scale });
+      pageHeight = page.view[3]; // Hauteur réelle
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      page.render({
+        canvasContext: ctx,
+        viewport: viewport,
+      }).promise.then(() => drawAnnotations());
+    });
+
+    // Créer un champ de saisie temporaire pour écrire directement
+    function createTempInput(x, y) {
+      if (tempInput) tempInput.remove();
+      tempInput = document.createElement('input');
+      tempInput.id = 'tempInput';
+      tempInput.style.left = `${x}px`;
+      tempInput.style.top = `${y}px`;
+      canvasContainer.appendChild(tempInput);
+      tempInput.focus();
+
+      tempInput.addEventListener('input', () => {
+        drawAnnotations();
+        ctx.font = `18px Arial`; // Taille et police ajustées
+        ctx.fillStyle = '#000000';
+        ctx.fillText(tempInput.value, x / scale, (pageHeight - y / scale) * scale);
+      });
+
+      tempInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const text = tempInput.value.trim();
+          if (text) {
+            annotations.push({ text, x: x / scale, y: pageHeight - y / scale, size: 16, color: '#000000' });
+          }
+          tempInput.remove();
+          tempInput = null;
+          drawAnnotations();
+        } else if (e.key === 'Escape') {
+          tempInput.remove();
+          tempInput = null;
+          drawAnnotations();
+        }
+      });
+    }
+
+    // Détecter si la souris est au-dessus d'une annotation
+    function isMouseOverAnnotation(mouseX, mouseY) {
+      return annotations.find(ann => {
+        const canvasX = ann.x * scale;
+        const canvasY = (pageHeight - ann.y) * scale;
+        ctx.font = `${ann.size * scale}px Arial`;
+        const textWidth = ctx.measureText(ann.text).width;
+        const textHeight = ann.size * scale;
+        return (
+          mouseX >= canvasX &&
+          mouseX <= canvasX + textWidth &&
+          mouseY >= canvasY - textHeight &&
+          mouseY <= canvasY
+        );
+      });
+    }
+
+    // Gérer le clic simple sur le canvas
+    function handleCanvasClick(e) {
+      if (clickTimeout) clearTimeout(clickTimeout);
+
+      clickTimeout = setTimeout(() => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Vérifier si le clic est sur une annotation existante
+        selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
+
+        if (!selectedAnnotation) {
+          // Pas d'annotation sélectionnée, créer un champ de saisie
+          createTempInput(mouseX, mouseY);
+        }
+        drawAnnotations();
+      }, 200); // Délai pour différencier clic simple et double-clic
+    }
+
+    // Gérer le double-clic sur le canvas
+    function handleCanvasDoubleClick(e) {
+      clearTimeout(clickTimeout); // Annuler le clic simple
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Vérifier si le double-clic est sur une annotation existante
+      selectedAnnotation = isMouseOverAnnotation(mouseX, mouseY);
+
+      if (selectedAnnotation) {
+        // Surligner l'annotation pour indiquer qu'elle est en mode "modifier"
+        drawAnnotations();
+      }
+    }
+
+    // Gérer le survol pour changer le curseur
+    function handleMouseMove(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Vérifier si la souris est au-dessus de l'annotation surlignée
+      if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
+        canvas.style.cursor = 'pointer';
+      } else {
+        canvas.style.cursor = 'text';
+      }
+
+      // Gérer le déplacement si en mode drag
+      if (isDragging && selectedAnnotation) {
+        selectedAnnotation.x = mouseX / scale;
+        selectedAnnotation.y = pageHeight - (mouseY / scale);
+        drawAnnotations();
+      }
+    }
+
+    // Gérer le début du déplacement
+    function handleMouseDown(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Vérifier si le clic est sur une annotation surlignée
+      if (selectedAnnotation && isMouseOverAnnotation(mouseX, mouseY) === selectedAnnotation) {
+        isDragging = true;
+      }
+    }
+
+    // Arrêter le déplacement
+    function handleMouseUp() {
+      isDragging = false;
+    }
+
+    // Dessiner toutes les annotations
+    function drawAnnotations() {
+      if (!pdfDoc) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      if (isRendering) return;
+      isRendering = true;
+
+      pdfDoc.getPage(1).then(page => {
+        const viewport = page.getViewport({ scale });
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        page.render({
+          canvasContext: ctx,
+          viewport: viewport,
+        }).promise.then(() => {
+          annotations.forEach(ann => {
+            const canvasX = ann.x * scale;
+            const canvasY = (pageHeight - ann.y) * scale;
+            ctx.font = `${ann.size * scale}px Arial`;
+            if (ann === selectedAnnotation) {
+              ctx.fillStyle = 'yellow';
+              ctx.fillRect(canvasX, canvasY - ann.size * scale, ctx.measureText(ann.text).width, ann.size * scale);
+            }
+            ctx.fillStyle = ann.color;
+            ctx.fillText(ann.text, canvasX, canvasY);
+          });
+          isRendering = false;
+        }).catch(err => {
+          console.error("Erreur lors du rendu:", err);
+          isRendering = false;
+        });
+      }).catch(err => {
+        console.error("Erreur lors de la récupération de la page:", err);
+        isRendering = false;
+      });
+    }
+
+    // Modifier la taille
+    function changeSize(newSize) {
+      if (selectedAnnotation) {
+        selectedAnnotation.size = newSize;
+        drawAnnotations();
+      }
+    }
+
+    // Modifier la couleur
+    function changeColor(newColor) {
+      if (selectedAnnotation) {
+        selectedAnnotation.color = newColor;
+        drawAnnotations();
+      }
+    }
+
+    // Effacer l'annotation sélectionnée
+    function deleteAnnotation() {
+      if (selectedAnnotation) {
+        annotations = annotations.filter(ann => ann !== selectedAnnotation);
+        selectedAnnotation = null;
+        drawAnnotations();
+      }
+    }
+
+    // Exporter le PDF modifié
+    async function exportPDF() {
+      if (!originalBytes) {
+        console.error("Aucun PDF chargé pour l'exportation");
+        return;
+      }
+
+      try {
+        const pdfDoc = await PDFLib.PDFDocument.load(originalBytes);
+        const page = pdfDoc.getPage(0); // Page 1
+        const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+        annotations.forEach(ann => {
+          console.log("Exportation de l'annotation:", ann);
+          const rgb = hexToRgb(ann.color);
+          page.drawText(ann.text, {
+            x: ann.x,
+            y: ann.y,
+            size: ann.size,
+            font: font,
+            color: PDFLib.rgb(rgb.r, rgb.g, rgb.b),
+          });
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'edited.pdf';
+        link.click();
+      } catch (error) {
+        console.error("Erreur lors de l'exportation du PDF:", error);
+      }
+    }
+
+    // Convertir hex en RGB
+    function hexToRgb(hex) {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      return { r, g, b };
+    }
+
+    // Événements
+    canvas.addEventListener('click', handleCanvasClick);
+    canvas.addEventListener('dblclick', handleCanvasDoubleClick);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mouseup', handleMouseUp);
+  </script>
+</body>
+
+</html>
